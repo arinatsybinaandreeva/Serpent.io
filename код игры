@@ -1,0 +1,1650 @@
+import pygame
+import random
+import math
+import sys
+import time
+import json
+import os
+
+# Инициализация Pygame
+pygame.init()
+pygame.mixer.init()
+
+# Полноэкранный режим
+info = pygame.display.Info()
+WIDTH, HEIGHT = info.current_w, info.current_h
+screen = pygame.display.set_mode((WIDTH, HEIGHT), pygame.FULLSCREEN)
+pygame.display.set_caption('Serpent.io')
+
+# Цвета
+WHITE = (255, 255, 255)
+BLACK = (0, 0, 0)
+RED = (255, 0, 0)
+GREEN = (0, 255, 0)
+BLUE = (0, 0, 255)
+YELLOW = (255, 255, 0)
+PURPLE = (128, 0, 128)
+ORANGE = (255, 165, 0)
+CYAN = (0, 255, 255)
+PINK = (255, 192, 203)
+GOLD = (255, 215, 0)
+SILVER = (192, 192, 192)
+DARK_BLUE = (0, 0, 100)
+LIGHT_BLUE = (100, 100, 255)
+BRONZE = (205, 127, 50)
+LIGHT_GREEN = (144, 238, 144)
+MAGENTA = (255, 0, 255)
+LIME = (0, 255, 0)
+DARK_GREEN = (0, 100, 0)
+DARK_RED = (139, 0, 0)
+LIGHT_PURPLE = (200, 100, 255)
+
+# Настройки игры
+GRID_SIZE = 25
+CAMERA_WIDTH, CAMERA_HEIGHT = WIDTH, HEIGHT
+MAP_WIDTH, MAP_HEIGHT = 4000, 4000
+
+clock = pygame.time.Clock()
+
+# Загрузка шрифтов
+try:
+    title_font = pygame.font.Font('arial.ttf', 48)
+    large_font = pygame.font.Font('arial.ttf', 36)
+    normal_font = pygame.font.Font('arial.ttf', 28)
+    small_font = pygame.font.Font('arial.ttf', 22)
+    very_small_font = pygame.font.Font('arial.ttf', 16)
+except:
+    title_font = pygame.font.SysFont('Arial', 48)
+    large_font = pygame.font.SysFont('Arial', 36)
+    normal_font = pygame.font.SysFont('Arial', 28)
+    small_font = pygame.font.SysFont('Arial', 22)
+    very_small_font = pygame.font.SysFont('Arial', 16)
+
+# Режимы игры
+GAME_MODES = [
+    {'name': 'EASY', 'bots': 20, 'speed': 4, 'score_multiplier': 1, 
+     'bot_intelligence': 0.8, 'bot_speed': 0.7, 'food_amount': 100, 'bot_size_variation': 1.2},
+    {'name': 'NORMAL', 'bots': 40, 'speed': 5, 'score_multiplier': 2, 
+     'bot_intelligence': 0.9, 'bot_speed': 0.8, 'food_amount': 150, 'bot_size_variation': 1.3},
+    {'name': 'HARD', 'bots': 60, 'speed': 6, 'score_multiplier': 3, 
+     'bot_intelligence': 1.0, 'bot_speed': 0.9, 'food_amount': 200, 'bot_size_variation': 1.4},
+    {'name': 'EXPERT', 'bots': 80, 'speed': 7, 'score_multiplier': 5, 
+     'bot_intelligence': 1.2, 'bot_speed': 1.0, 'food_amount': 250, 'bot_size_variation': 1.5}
+]
+
+# Скины змейки
+SNAKE_SKINS = [
+    {'name': 'Начинающий', 'color': GREEN, 'pattern': None, 'price': 0, 'unlocked': True, 'description': 'Базовый скин'},
+    {'name': 'Охотник', 'color': BLUE, 'pattern': None, 'price': 10000, 'unlocked': False, 'description': '+10% к скорости'},
+    {'name': 'Воин', 'color': RED, 'pattern': None, 'price': 30000, 'unlocked': False, 'description': '+20% к длине'},
+    {'name': 'Мастер', 'color': PURPLE, 'pattern': None, 'price': 50000, 'unlocked': False, 'description': '+15% к скорости и длине'},
+    {'name': 'Легенда', 'color': GOLD, 'pattern': None, 'price': 100000, 'unlocked': False, 'description': '+25% ко всем показателям'},
+    {'name': 'Зебра', 'pattern': [WHITE, BLACK], 'price': 20000, 'unlocked': False, 'description': 'Черно-белый полосатый'},
+]
+
+# Ники для ботов
+BOT_NAMES = [
+    "Тень", "Призрак", "Хищник", "Охотник", "Воин", "Убийца", "Ниндзя", "Самурай",
+    "Гладиатор", "Титан", "Голиаф", "Циклоп", "Феникс", "Дракон", "Грифон", "Гидра",
+    "Василиск", "Кракен", "Вулкан", "Торнадо", "Цунами", "Ураган", "Молния", "Вихрь",
+    "Берсерк", "Варвар", "Рыцарь", "Паладин", "Разбойник", "Маг", "Жрец", "Друид"
+]
+
+# Файл для сохранения статистики
+STATS_FILE = "snake_profile.json"
+
+def load_stats():
+    if os.path.exists(STATS_FILE):
+        try:
+            with open(STATS_FILE, 'r', encoding='utf-8') as f:
+                stats = json.load(f)
+                if 'unlocked_skins' not in stats:
+                    stats['unlocked_skins'] = [0]
+                if 'selected_skin' not in stats:
+                    stats['selected_skin'] = 0
+                return stats
+        except:
+            return create_default_stats()
+    return create_default_stats()
+
+def create_default_stats():
+    return {
+        'player_name': 'Игрок',
+        'total_score': 0,
+        'total_games': 0,
+        'total_kills': 0,
+        'max_score': 0,
+        'max_kills': 0,
+        'unlocked_skins': [0],
+        'coins': 0,
+        'rating': 1000,
+        'games_won': 0,
+        'time_played': 0,
+        'top_10_finishes': 0,
+        'selected_skin': 0
+    }
+
+def save_stats(stats):
+    with open(STATS_FILE, 'w', encoding='utf-8') as f:
+        json.dump(stats, f, ensure_ascii=False, indent=2)
+
+def unlock_skin(stats, skin_index):
+    if skin_index < len(SNAKE_SKINS):
+        skin = SNAKE_SKINS[skin_index]
+        if skin_index not in stats['unlocked_skins'] and stats['coins'] >= skin['price']:
+            stats['coins'] -= skin['price']
+            stats['unlocked_skins'].append(skin_index)
+            stats['selected_skin'] = skin_index
+            save_stats(stats)
+            return True
+    return False
+
+# Создаем звук поедания еды
+try:
+    # Генерируем простой звук поедания
+    sample_rate = 44100
+    duration = 0.2
+    samples = int(sample_rate * duration)
+    buffer = bytearray()
+    
+    for i in range(samples):
+        # Создаем звук "хруста" - комбинация высоких частот
+        value = int(127 + 100 * math.sin(2 * math.pi * 880 * i / sample_rate) * 
+                   math.exp(-i / (sample_rate * duration * 0.5)))
+        buffer.append(max(0, min(255, value)))
+    
+    eat_sound = pygame.mixer.Sound(buffer=bytes(buffer))
+    crash_sound = pygame.mixer.Sound(buffer=bytearray([127] * 1000))
+    boost_sound = pygame.mixer.Sound(buffer=bytearray([127] * 1000))
+    kill_sound = pygame.mixer.Sound(buffer=bytearray([127] * 1000))
+    coin_sound = pygame.mixer.Sound(buffer=bytearray([127] * 1000))
+    respawn_sound = pygame.mixer.Sound(buffer=bytearray([127] * 1000))
+    unlock_sound = pygame.mixer.Sound(buffer=bytearray([127] * 1000))
+except:
+    class DummySound:
+        def play(self): pass
+    eat_sound = crash_sound = boost_sound = kill_sound = coin_sound = respawn_sound = unlock_sound = DummySound()
+
+class Camera:
+    def __init__(self):
+        self.x = 0
+        self.y = 0
+        self.width = CAMERA_WIDTH
+        self.height = CAMERA_HEIGHT
+        self.zoom = 1.0
+    
+    def update(self, target_x, target_y, target_speed):
+        self.x += (target_x - self.x - self.width // 2) * 0.08
+        self.y += (target_y - self.y - self.height // 2) * 0.08
+        self.zoom = 0.9 + min(target_speed, 1.5) * 0.1
+        self.x = max(0, min(self.x, MAP_WIDTH - self.width))
+        self.y = max(0, min(self.y, MAP_HEIGHT - self.height))
+    
+    def world_to_screen(self, x, y):
+        zoomed_x = (x - self.x) * self.zoom + self.width * (1 - self.zoom) / 2
+        zoomed_y = (y - self.y) * self.zoom + self.height * (1 - self.zoom) / 2
+        return int(zoomed_x), int(zoomed_y)
+
+class Snake:
+    def __init__(self, x, y, skin_index, name="Игрок", is_bot=False, initial_length=4, speed=1.0):
+        skin = SNAKE_SKINS[skin_index]
+        self.positions = [(x, y)]
+        self.direction = self.get_random_direction()
+        self.length = initial_length
+        self.score = initial_length - 1
+        self.skin_index = skin_index
+        self.skin = skin
+        self.name = name
+        self.is_bot = is_bot
+        self.speed = speed * 0.3
+        self.boost_timer = 0
+        self.kills = 0
+        self.is_alive = True
+        self.rank = 0
+        self.invincible_timer = 120  # 2 секунды неуязвимости для всех
+        self.respawn_timer = 0
+        self.spawn_time = time.time()  # Время появления
+        
+        for i in range(1, initial_length):
+            new_x = x - i * self.direction[0] * GRID_SIZE
+            new_y = y - i * self.direction[1] * GRID_SIZE
+            self.positions.append((new_x, new_y))
+    
+    def get_random_direction(self):
+        directions = [(-1, 0), (1, 0), (0, -1), (0, 1)]
+        return random.choice(directions)
+    
+    def get_head_position(self):
+        return self.positions[0]
+    
+    def get_speed(self):
+        base_speed = self.speed
+        if self.boost_timer > 0:
+            base_speed *= 2.0
+        return base_speed
+    
+    def move(self):
+        if not self.is_alive:
+            self.respawn_timer -= 1
+            if self.respawn_timer <= 0:
+                self.respawn()
+            return
+            
+        head_x, head_y = self.get_head_position()
+        dir_x, dir_y = self.direction
+        
+        new_x = head_x + dir_x * self.get_speed() * GRID_SIZE
+        new_y = head_y + dir_y * self.get_speed() * GRID_SIZE
+        
+        # СМЕРТЬ ПРИ КАСАНИИ ГРАНИЦ
+        if new_x < 0 or new_x >= MAP_WIDTH or new_y < 0 or new_y >= MAP_HEIGHT:
+            self.kill()
+            return
+        
+        self.positions.insert(0, (new_x, new_y))
+        if len(self.positions) > self.length:
+            self.positions.pop()
+        
+        if self.boost_timer > 0:
+            self.boost_timer -= 1
+        
+        if self.invincible_timer > 0:
+            self.invincible_timer -= 1
+    
+    def change_direction(self, direction):
+        if direction != (0, 0) and (direction[0] * -1, direction[1] * -1) != self.direction:
+            self.direction = direction
+    
+    def grow(self, amount=1, play_sound=True):
+        self.length += amount
+        self.score += amount
+        if play_sound:
+            eat_sound.play()
+    
+    def apply_boost(self):
+        self.boost_timer = 120
+        boost_sound.play()
+    
+    def kill(self):
+        if self.invincible_timer > 0:
+            return False
+            
+        self.is_alive = False
+        self.respawn_timer = 180
+        crash_sound.play()
+        return max(3, self.length // 3)
+    
+    def respawn(self):
+        self.is_alive = True
+        self.positions = [(random.randint(500, MAP_WIDTH-500), random.randint(500, MAP_HEIGHT-500))]
+        self.direction = self.get_random_direction()
+        self.length = max(3, self.length // 2)
+        self.score = self.length - 1
+        self.invincible_timer = 120
+        
+        for i in range(1, self.length):
+            new_x = self.positions[0][0] - i * self.direction[0] * GRID_SIZE
+            new_y = self.positions[0][1] - i * self.direction[1] * GRID_SIZE
+            self.positions.append((new_x, new_y))
+        
+        respawn_sound.play()
+    
+    def is_invincible(self):
+        return self.invincible_timer > 0
+    
+    def get_segment_color(self, segment_index):
+        if self.skin['pattern'] is None:
+            return self.skin['color']
+        else:
+            pattern = self.skin['pattern']
+            return pattern[segment_index % len(pattern)]
+    
+    def draw(self, surface, camera):
+        if not self.is_alive:
+            return
+            
+        for i, (x, y) in enumerate(self.positions):
+            screen_x, screen_y = camera.world_to_screen(x, y)
+            size = int(GRID_SIZE * camera.zoom * (0.9 if self.is_bot else 1.0))
+            
+            alpha = 255
+            if self.is_invincible():
+                alpha = 150 + int(105 * math.sin(time.time() * 10))
+            
+            segment_color = self.get_segment_color(i)
+            
+            if i == 0:  # Голова
+                # Создаем поверхность с альфа-каналом для прозрачности
+                s = pygame.Surface((size, size), pygame.SRCALPHA)
+                pygame.draw.circle(s, (*segment_color, alpha), (size//2, size//2), size//2)
+                surface.blit(s, (screen_x - size//2, screen_y - size//2))
+                
+                eye_size = max(2, size // 5)
+                dir_x, dir_y = self.direction
+                
+                if dir_x != 0 or dir_y != 0:
+                    pygame.draw.circle(surface, WHITE, 
+                                     (screen_x + dir_x * size//3, screen_y + dir_y * size//3), 
+                                     eye_size)
+                    pygame.draw.circle(surface, BLACK, 
+                                     (screen_x + dir_x * size//3, screen_y + dir_y * size//3), 
+                                     eye_size // 2)
+                
+                pygame.draw.circle(surface, BLACK, (screen_x, screen_y), size // 2, 1)
+            else:  # Тело
+                s = pygame.Surface((size-2, size-2), pygame.SRCALPHA)
+                pygame.draw.circle(s, (*segment_color, alpha), ((size-2)//2, (size-2)//2), (size-2)//2)
+                surface.blit(s, (screen_x - (size-2)//2, screen_y - (size-2)//2))
+                pygame.draw.circle(surface, BLACK, (screen_x, screen_y), (size-2)//2, 1)
+        
+        # Отображение имени
+        if not self.is_bot or self.rank <= 15:
+            head_x, head_y = camera.world_to_screen(*self.get_head_position())
+            name_color = GOLD if self.rank == 1 else SILVER if self.rank == 2 else BRONZE if self.rank == 3 else WHITE
+            
+            name_text = small_font.render(f'{self.rank}. {self.name} ({self.score})', True, name_color)
+            surface.blit(name_text, (head_x - name_text.get_width()//2, head_y - size - 20))
+
+class Food:
+    def __init__(self, position=None, food_type=None, is_special=False):
+        if position:
+            self.position = position
+        else:
+            # Еда генерируется реже и дальше от краев
+            self.position = (random.randint(300, MAP_WIDTH-300), random.randint(300, MAP_HEIGHT-300))
+        
+        # Уменьшаем частоту специальной еды
+        self.type = food_type if food_type else random.choices(
+            ['normal', 'boost', 'bonus', 'coin'], 
+            weights=[15, 1, 0.3, 0.2], k=1
+        )[0]
+        
+        self.is_special = is_special
+        self.pulse_timer = 0
+        
+        self.colors = {
+            'normal': RED, 
+            'boost': CYAN, 
+            'bonus': YELLOW, 
+            'coin': GOLD
+        }
+        self.sizes = {'normal': 0.5, 'boost': 0.7, 'bonus': 0.9, 'coin': 0.4}
+        self.value = {'normal': 1, 'boost': 2, 'bonus': 5, 'coin': 10}
+    
+    def update(self):
+        self.pulse_timer += 1
+    
+    def draw(self, surface, camera):
+        x, y = self.position
+        screen_x, screen_y = camera.world_to_screen(x, y)
+        
+        if self.is_special:
+            pulse = 0.5 + 0.2 * math.sin(self.pulse_timer * 0.1)
+            size = int(GRID_SIZE * 1.2 * camera.zoom * pulse)
+            pygame.draw.circle(surface, GREEN, (screen_x, screen_y), size)
+            pygame.draw.circle(surface, WHITE, (screen_x, screen_y), size, 2)
+        else:
+            color = self.colors[self.type]
+            size = int(GRID_SIZE * self.sizes[self.type] * camera.zoom)
+            pygame.draw.circle(surface, color, (screen_x, screen_y), size)
+            if self.type != 'normal':
+                pygame.draw.circle(surface, WHITE, (screen_x, screen_y), size, 1)
+
+class AdvancedBot:
+    def __init__(self, name, intelligence=0.8, speed=1.0, size_variation=1.0):
+        x = random.randint(500, MAP_WIDTH-500)
+        y = random.randint(500, MAP_HEIGHT-500)
+        
+        skin_index = random.randint(0, len(SNAKE_SKINS) - 1)
+        base_size = 6
+        size_modifier = 1.0
+        initial_length = max(5, int(base_size * size_modifier))
+        
+        self.snake = Snake(x, y, skin_index, name, True, initial_length, speed)
+        self.intelligence = intelligence
+        self.target_food = None
+        self.target_snake = None
+        self.state = 'eat'
+        self.state_timer = random.randint(60, 120)
+        self.last_food_time = time.time()
+        self.last_direction_change = 0
+        self.avoid_wall_timer = 0
+        self.strategy_timer = 0
+        self.death_time = 0
+        self.memory = {}
+        self.path = []
+        self.aggression = 0.6 + (intelligence - 0.8) * 1.0
+        self.caution = 1.0 - self.aggression * 0.4
+        self.survival_time = time.time()
+        
+    def update(self, foods, player_snake, other_snakes):
+        if not self.snake.is_alive:
+            if self.death_time == 0:
+                self.death_time = time.time()
+            return
+            
+        # В режиме неуязвимости просто двигаемся и ищем еду
+        if self.snake.is_invincible():
+            head_x, head_y = self.snake.get_head_position()
+            self.advanced_hunt_food(foods, head_x, head_y)
+            self.advanced_avoid_walls(head_x, head_y)
+            self.snake.move()
+            self.eat_food(foods, head_x, head_y)
+            return
+            
+        head_x, head_y = self.snake.get_head_position()
+        
+        # Обновление памяти
+        self.update_memory(foods, player_snake, other_snakes)
+        
+        # Определение стратегии
+        self.strategy_timer -= 1
+        if self.strategy_timer <= 0:
+            self.choose_strategy(player_snake, other_snakes)
+            self.strategy_timer = random.randint(50, 100)
+        
+        # Избегание стен
+        self.advanced_avoid_walls(head_x, head_y)
+        
+        # Реализация стратегии
+        if self.state == 'eat':
+            self.advanced_hunt_food(foods, head_x, head_y)
+        elif self.state == 'attack':
+            self.advanced_attack_enemy(player_snake, other_snakes, head_x, head_y)
+        elif self.state == 'escape':
+            self.advanced_escape_danger(player_snake, other_snakes, head_x, head_y)
+        elif self.state == 'ambush':
+            self.ambush_strategy(player_snake, other_snakes, head_x, head_y)
+        elif self.state == 'patrol':
+            self.patrol_strategy(head_x, head_y)
+        elif self.state == 'survive':
+            self.survival_strategy(head_x, head_y)
+        
+        # Смена направления
+        self.last_direction_change -= 1
+        if self.last_direction_change <= 0:
+            self.smart_direction_change()
+            self.last_direction_change = random.randint(20, 50)
+        
+        self.state_timer -= 1
+        self.snake.move()
+        
+        # Боты едят еду
+        self.eat_food(foods, head_x, head_y)
+    
+    def survival_strategy(self, head_x, head_y):
+        """Стратегия выживания - избегание опасностей"""
+        # Ищем безопасное место в центре карты
+        center_x, center_y = MAP_WIDTH // 2, MAP_HEIGHT // 2
+        self.move_towards((center_x, center_y), 0.9)
+        
+        # Дополнительно избегаем стен
+        margin = 300
+        if (head_x < margin or head_x > MAP_WIDTH - margin or
+            head_y < margin or head_y > MAP_HEIGHT - margin):
+            escape_dir = (1 if center_x > head_x else -1, 
+                        1 if center_y > head_y else -1)
+            self.snake.change_direction(escape_dir)
+    
+    def update_memory(self, foods, player_snake, other_snakes):
+        """Запоминает позиции еды и врагов"""
+        current_time = time.time()
+        
+        # Запоминаем еду
+        for food in foods:
+            if food.type != 'normal' or random.random() < 0.4:
+                self.memory[f'food_{id(food)}'] = {
+                    'position': food.position,
+                    'type': food.type,
+                    'timestamp': current_time,
+                    'priority': 2.0 if food.type != 'normal' else 1.0
+                }
+        
+        # Запоминаем врагов
+        all_enemies = [player_snake] + [bot.snake for bot in other_snakes if bot != self]
+        for enemy in all_enemies:
+            if enemy.is_alive and enemy != self.snake:
+                danger_level = enemy.score / max(1, self.snake.score)
+                self.memory[f'enemy_{id(enemy)}'] = {
+                    'position': enemy.get_head_position(),
+                    'score': enemy.score,
+                    'direction': enemy.direction,
+                    'timestamp': current_time,
+                    'danger': danger_level
+                }
+        
+        # Очищаем старую память
+        to_delete = []
+        for key, data in self.memory.items():
+            max_age = 15 / data.get('priority', 1.0)
+            if current_time - data['timestamp'] > max_age:
+                to_delete.append(key)
+        for key in to_delete:
+            del self.memory[key]
+    
+    def choose_strategy(self, player_snake, other_snakes):
+        """Улучшенный выбор стратегии"""
+        hunger_level = (time.time() - self.last_food_time) / 2.0
+        all_snakes = [player_snake] + [bot.snake for bot in other_snakes if bot != self]
+        
+        # Проверка на опасность
+        immediate_danger = False
+        for snake in all_snakes:
+            if (snake != self.snake and snake.is_alive and not snake.is_invincible() and
+                snake.score > self.snake.score * (1.5 - self.caution * 0.3)):
+                
+                dist = math.hypot(snake.get_head_position()[0] - self.snake.get_head_position()[0],
+                                 snake.get_head_position()[1] - self.snake.get_head_position()[1])
+                if dist < 300:
+                    immediate_danger = True
+                    break
+        
+        if immediate_danger:
+            self.state = 'escape'
+            return
+        
+        # Вероятностный выбор стратегии
+        strategies = []
+        
+        if hunger_level > 4.0 or self.snake.score < 25:
+            strategies.extend(['eat'] * (10 + int(self.intelligence * 5)))
+        
+        weak_enemies = any(snake for snake in all_snakes 
+                          if snake != self.snake and snake.is_alive and 
+                          snake.score < self.snake.score * 0.7)
+        
+        if weak_enemies and self.snake.score > 20:
+            strategies.extend(['attack'] * (8 + int(self.aggression * 10)))
+        
+        if self.snake.score > 35 and random.random() < self.aggression:
+            strategies.extend(['ambush'] * (6 + int(self.intelligence * 4)))
+        
+        survival_time = time.time() - self.survival_time
+        if survival_time > 30 and random.random() < self.caution:
+            strategies.extend(['patrol'] * (5 + int(self.caution * 5)))
+        
+        if not strategies or random.random() < 0.1:
+            strategies.extend(['patrol'] * 4)
+        
+        if strategies:
+            self.state = random.choice(strategies)
+        else:
+            self.state = 'eat'
+    
+    def advanced_hunt_food(self, foods, head_x, head_y):
+        """Улучшенная охота за едой"""
+        best_target = None
+        best_score = -float('inf')
+        
+        # Проверяем еду в памяти
+        for key, data in self.memory.items():
+            if key.startswith('food_'):
+                fx, fy = data['position']
+                dist = math.hypot(fx - head_x, fy - head_y)
+                
+                if dist < 1800:
+                    food_value = 1
+                    if data['type'] == 'boost': food_value = 4
+                    if data['type'] == 'bonus': food_value = 6
+                    if data['type'] == 'coin': food_value = 3
+                    
+                    priority = data.get('priority', 1.0)
+                    score = (food_value * self.intelligence * priority) / (dist + 1)
+                    
+                    if score > best_score:
+                        best_score = score
+                        best_target = data['position']
+        
+        # Если в памяти нет хорошей еды, ищем ближайшую
+        if best_target is None and foods:
+            for food in foods:
+                fx, fy = food.position
+                dist = math.hypot(fx - head_x, fy - head_y)
+                
+                if dist < 1000:
+                    food_value = 1
+                    if food.type == 'boost': food_value = 4
+                    if food.type == 'bonus': food_value = 6
+                    if food.type == 'coin': food_value = 3
+                    
+                    score = (food_value * self.intelligence) / (dist + 1)
+                    
+                    if score > best_score:
+                        best_score = score
+                        best_target = food.position
+        
+        if best_target:
+            accuracy = 0.96 + self.intelligence * 0.03
+            self.move_towards(best_target, accuracy)
+        else:
+            if random.random() < 0.5:
+                self.patrol_strategy(head_x, head_y)
+    
+    def advanced_attack_enemy(self, player_snake, other_snakes, head_x, head_y):
+        """Улучшенная атака врагов"""
+        targets = [player_snake] + [bot.snake for bot in other_snakes if bot != self]
+        best_target = None
+        best_score = -float('inf')
+        
+        for target in targets:
+            # Пропускаем неуязвимых целей
+            if target.is_invincible():
+                continue
+                
+            if (target != self.snake and target.is_alive and
+                self.snake.score > target.score * (0.7 + self.aggression * 0.3)):
+                
+                tx, ty = target.get_head_position()
+                dist = math.hypot(tx - head_x, ty - head_y)
+                
+                if dist < 1000:
+                    score = (target.score * self.aggression) / (dist + 1)
+                    
+                    tdx, tdy = target.direction
+                    predicted_pos = (tx + tdx * dist * 0.1, ty + tdy * dist * 0.1)
+                    
+                    if score > best_score:
+                        best_score = score
+                        best_target = predicted_pos
+        
+        if best_target:
+            self.move_towards(best_target, 0.9 + self.intelligence * 0.1)
+            
+            if best_score > 5 and random.random() < self.aggression:
+                tx, ty = best_target
+                intercept_x = tx + (tx - head_x) * 0.2
+                intercept_y = ty + (ty - head_y) * 0.2
+                self.move_towards((intercept_x, intercept_y), 0.8)
+        else:
+            self.state = 'eat'
+    
+    def advanced_escape_danger(self, player_snake, other_snakes, head_x, head_y):
+        """Улучшенное бегство от опасности"""
+        all_snakes = [player_snake] + [bot.snake for bot in other_snakes if bot != self]
+        dangers = []
+        
+        for danger in all_snakes:
+            if (danger != self.snake and danger.is_alive and 
+                danger.score > self.snake.score * (1.1 - self.caution * 0.1)):
+                
+                dx, dy = danger.get_head_position()
+                dist = math.hypot(dx - head_x, dy - head_y)
+                
+                if dist < 600:
+                    dangers.append((danger, dist, (dx, dy)))
+        
+        if dangers:
+            dangers.sort(key=lambda x: x[1])
+            most_dangerous = dangers[0]
+            dx, dy = most_dangerous[2]
+            
+            escape_dir = (head_x - dx, head_y - dy)
+            length = math.hypot(escape_dir[0], escape_dir[1])
+            
+            if length > 0:
+                escape_dir = (escape_dir[0]/length, escape_dir[1]/length)
+                
+                safe_directions = self.find_safe_directions(head_x, head_y, escape_dir)
+                
+                if safe_directions:
+                    best_dir = max(safe_directions, key=lambda x: x[1])
+                    self.snake.change_direction((round(best_dir[0][0]), round(best_dir[0][1])))
+                else:
+                    self.snake.change_direction((round(escape_dir[0]), round(escape_dir[1])))
+        else:
+            self.state = 'eat'
+    
+    def ambush_strategy(self, player_snake, other_snakes, head_x, head_y):
+        """Стратегия засады"""
+        targets = [player_snake] + [bot.snake for bot in other_snakes if bot != self]
+        vulnerable_targets = []
+        
+        for target in targets:
+            if (target != self.snake and target.is_alive and
+                target.score < self.snake.score * 0.6):
+                
+                tx, ty = target.get_head_position()
+                dist = math.hypot(tx - head_x, ty - head_y)
+                
+                if dist < 1200:
+                    vulnerable_targets.append((target, dist))
+        
+        if vulnerable_targets:
+            vulnerable_targets.sort(key=lambda x: x[1])
+            target, dist = vulnerable_targets[0]
+            
+            tx, ty = target.get_head_position()
+            tdx, tdy = target.direction
+            intercept_pos = (tx + tdx * dist * 0.3, ty + tdy * dist * 0.3)
+            
+            self.move_towards(intercept_pos, 0.85 + self.intelligence * 0.15)
+        else:
+            self.state = 'patrol'
+    
+    def patrol_strategy(self, head_x, head_y):
+        """Стратегия патрулирования"""
+        if not self.path or random.random() < 0.1:
+            self.path = []
+            for _ in range(3):
+                point_x = random.randint(500, MAP_WIDTH - 500)
+                point_y = random.randint(500, MAP_HEIGHT - 500)
+                self.path.append((point_x, point_y))
+        
+        if self.path:
+            target = self.path[0]
+            dist = math.hypot(target[0] - head_x, target[1] - head_y)
+            
+            if dist < 200:
+                self.path.pop(0)
+            else:
+                self.move_towards(target, 0.8)
+    
+    def find_safe_directions(self, head_x, head_y, preferred_dir):
+        """Находит безопасные направления для движения"""
+        directions = [(-1, 0), (1, 0), (0, -1), (0, 1)]
+        safe_directions = []
+        
+        for direction in directions:
+            new_x = head_x + direction[0] * 100
+            new_y = head_y + direction[1] * 100
+            
+            if (100 <= new_x <= MAP_WIDTH - 100 and 
+                100 <= new_y <= MAP_HEIGHT - 100):
+                
+                dot_product = direction[0] * preferred_dir[0] + direction[1] * preferred_dir[1]
+                safety_score = dot_product * 0.5 + 0.5
+                
+                safe_directions.append((direction, safety_score))
+        
+        return safe_directions
+    
+    def advanced_avoid_walls(self, head_x, head_y):
+        """Улучшенное избегание стен"""
+        margin = 250 + int(self.intelligence * 150)
+        safety_margin = margin * (1.0 + self.caution * 0.6)
+        
+        if (head_x < safety_margin or head_x > MAP_WIDTH - safety_margin or
+            head_y < safety_margin or head_y > MAP_HEIGHT - safety_margin):
+            
+            center_x, center_y = MAP_WIDTH // 2, MAP_HEIGHT // 2
+            escape_dir = (1 if center_x > head_x else -1, 
+                        1 if center_y > head_y else -1)
+            
+            if random.random() < self.intelligence * 0.9:
+                self.snake.change_direction(escape_dir)
+            else:
+                safe_dirs = self.find_safe_directions(head_x, head_y, escape_dir)
+                if safe_dirs:
+                    best_dir = max(safe_dirs, key=lambda x: x[1])
+                    self.snake.change_direction(best_dir[0])
+    
+    def smart_direction_change(self):
+        """Умная смена направления"""
+        if random.random() < self.intelligence:
+            head_x, head_y = self.snake.get_head_position()
+            
+            interesting_dirs = []
+            
+            for key, data in self.memory.items():
+                if time.time() - data['timestamp'] < 5:
+                    obj_x, obj_y = data['position']
+                    dir_to_obj = (1 if obj_x > head_x else -1, 
+                                1 if obj_y > head_y else -1)
+                    interesting_dirs.append(dir_to_obj)
+            
+            if interesting_dirs:
+                dir_counts = {}
+                for direction in interesting_dirs:
+                    dir_counts[direction] = dir_counts.get(direction, 0) + 1
+                
+                best_dir = max(dir_counts.items(), key=lambda x: x[1])[0]
+                self.snake.change_direction(best_dir)
+                return
+        
+        directions = [(-1, 0), (1, 0), (0, -1), (0, 1)]
+        current_dir = self.snake.direction
+        opposite_dir = (-current_dir[0], -current_dir[1])
+        
+        available_dirs = [d for d in directions if d != opposite_dir]
+        if available_dirs:
+            new_dir = random.choice(available_dirs)
+            self.snake.change_direction(new_dir)
+    
+    def eat_food(self, foods, head_x, head_y):
+        """Боты едят еду и растут"""
+        for food in foods[:]:
+            if not self.snake.is_alive:
+                continue
+                
+            fx, fy = food.position
+            distance = math.hypot(fx - head_x, fy - head_y)
+            
+            if distance < GRID_SIZE * 1.5:
+                self.snake.grow(food.value[food.type], play_sound=False)
+                foods.remove(food)
+                if random.random() < 0.6:
+                    foods.append(Food())
+                self.on_eat_food()
+                break
+    
+    def move_towards(self, target_pos, accuracy=0.9):
+        if random.random() < self.intelligence * accuracy:
+            tx, ty = target_pos
+            hx, hy = self.snake.get_head_position()
+            
+            dx = 0
+            dy = 0
+            
+            if abs(tx - hx) > GRID_SIZE * 2:
+                dx = 1 if tx > hx else -1
+            if abs(ty - hy) > GRID_SIZE * 2:
+                dy = 1 if ty > hy else -1
+            
+            if dx != 0 or dy != 0:
+                self.snake.change_direction((dx, dy))
+    
+    def on_eat_food(self):
+        self.last_food_time = time.time()
+
+def create_advanced_bots(count):
+    bots = []
+    for i in range(count):
+        intelligence = random.uniform(0.7, 0.95)
+        aggression = random.uniform(0.5, 0.9)
+        speed = random.uniform(0.9, 1.1)
+        
+        bot = AdvancedBot(f"Bot_{i+1}", intelligence, speed)
+        bot.aggression = aggression
+        bot.caution = 1.0 - aggression * 0.4
+        bots.append(bot)
+    
+    return bots
+
+def draw_dynamic_background(surface, camera):
+    surface.fill((20, 20, 50))
+    
+    t = time.time()
+    for i in range(80):
+        x = (i * 197 + t * 40) % MAP_WIDTH
+        y = (i * 173 + t * 25) % MAP_HEIGHT
+        sx, sy = camera.world_to_screen(x, y)
+        if 0 <= sx < WIDTH and 0 <= sy < HEIGHT:
+            size = 1 + math.sin(t + i) * 1.5
+            brightness = 80 + int(70 * math.sin(t * 2 + i))
+            pygame.draw.circle(surface, (brightness, brightness, 180), (sx, sy), size)
+
+def show_game_over(surface, score, player_name, kills, coins_earned, final_rank, stats):
+    overlay = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+    overlay.fill((0, 0, 0, 200))
+    surface.blit(overlay, (0, 0))
+    
+    stats['total_score'] += score
+    stats['total_games'] += 1
+    stats['total_kills'] += kills
+    stats['coins'] += coins_earned
+    stats['max_score'] = max(stats['max_score'], score)
+    stats['max_kills'] = max(stats['max_kills'], kills)
+    
+    if final_rank == 1:
+        stats['games_won'] += 1
+        stats['rating'] += 50
+    
+    save_stats(stats)
+    
+    rank_color = GOLD if final_rank == 1 else SILVER if final_rank == 2 else BRONZE if final_rank == 3 else WHITE
+    
+    game_over_text = title_font.render('ИГРА ОКОНЧЕНА', True, RED)
+    rank_text = large_font.render(f'Место: {final_rank}', True, rank_color)
+    score_text = normal_font.render(f'Счет: {score}', True, WHITE)
+    kills_text = normal_font.render(f'Убийств: {kills}', True, RED)
+    coins_text = normal_font.render(f'Монеты: +{coins_earned}', True, GOLD)
+    
+    restart_text = small_font.render('R - Новая игра', True, GREEN)
+    menu_text = small_font.render('M - Меню', True, YELLOW)
+    quit_text = small_font.render('Q - Выход', True, WHITE)
+    
+    y_pos = HEIGHT // 2 - 150
+    surface.blit(game_over_text, (WIDTH//2 - game_over_text.get_width()//2, y_pos))
+    y_pos += 70
+    surface.blit(rank_text, (WIDTH//2 - rank_text.get_width()//2, y_pos))
+    y_pos += 50
+    surface.blit(score_text, (WIDTH//2 - score_text.get_width()//2, y_pos))
+    y_pos += 40
+    surface.blit(kills_text, (WIDTH//2 - kills_text.get_width()//2, y_pos))
+    y_pos += 40
+    surface.blit(coins_text, (WIDTH//2 - coins_text.get_width()//2, y_pos))
+    
+    y_pos += 60
+    surface.blit(restart_text, (WIDTH//2 - restart_text.get_width()//2, y_pos))
+    y_pos += 40
+    surface.blit(menu_text, (WIDTH//2 - menu_text.get_width()//2, y_pos))
+    y_pos += 40
+    surface.blit(quit_text, (WIDTH//2 - quit_text.get_width()//2, y_pos))
+
+def show_hud(surface, score, speed, boost_time, player_name, kills, coins, total_coins, rank, total_players, all_snakes, bots_count):
+    # Основной HUD вверху
+    pygame.draw.rect(surface, (0, 0, 0, 180), (0, 0, WIDTH, 60))
+    
+    player_text = normal_font.render(f'{player_name}', True, WHITE)
+    score_text = small_font.render(f'Счет: {score}', True, WHITE)
+    kills_text = small_font.render(f'Убийств: {kills}', True, RED)
+    
+    rank_color = GOLD if rank == 1 else SILVER if rank == 2 else CYAN if rank <= 10 else WHITE
+    rank_text = large_font.render(f'{rank}/{total_players}', True, rank_color)
+    
+    coins_text = small_font.render(f'💰 {coins}', True, GOLD)
+    speed_text = small_font.render(f'Скорость: {speed:.1f}x', True, WHITE)
+    bots_text = small_font.render(f'Боты: {bots_count}', True, SILVER)
+    
+    surface.blit(player_text, (20, 10))
+    surface.blit(score_text, (20, 35))
+    surface.blit(kills_text, (150, 35))
+    
+    surface.blit(rank_text, (WIDTH//2 - rank_text.get_width()//2, 15))
+    
+    surface.blit(coins_text, (WIDTH - 150, 10))
+    surface.blit(speed_text, (WIDTH - 150, 35))
+    surface.blit(bots_text, (WIDTH - 250, 35))
+    
+    if boost_time > 0:
+        boost_width = 120 * (boost_time/120)
+        pygame.draw.rect(surface, (100, 100, 255), (WIDTH - 150, 55, boost_width, 5))
+        boost_text = small_font.render('ТУРБО!', True, CYAN)
+        surface.blit(boost_text, (WIDTH - 200, 52))
+    
+    # Таблица лидеров справа сверху
+    show_leaderboard(surface, all_snakes)
+def show_leaderboard(surface, all_snakes):
+    """Отображение таблицы лидеров справа сверху"""
+    # Сортируем змей по очкам
+    sorted_snakes = sorted([s for s in all_snakes if s.is_alive], 
+                          key=lambda x: x.score, reverse=True)
+    
+    # Показываем топ-5 игроков
+    top_count = min(5, len(sorted_snakes))
+    
+    # Фон для таблицы лидеров
+    leaderboard_width = 250
+    leaderboard_height = top_count * 30 + 40
+    pygame.draw.rect(surface, (0, 0, 0, 180), 
+                   (WIDTH - leaderboard_width - 10, 70, leaderboard_width, leaderboard_height),
+                   border_radius=5)
+    pygame.draw.rect(surface, WHITE, 
+                   (WIDTH - leaderboard_width - 10, 70, leaderboard_width, leaderboard_height),
+                   2, border_radius=5)
+    
+    # Заголовок таблицы
+    title_text = small_font.render('ТОП ИГРОКОВ', True, GOLD)
+    surface.blit(title_text, (WIDTH - leaderboard_width//2 - title_text.get_width()//2 - 10, 75))
+    
+    # Список игроков
+    for i, snake in enumerate(sorted_snakes[:top_count]):
+        y_pos = 110 + i * 30
+        
+        # Цвет в зависимости от места
+        if i == 0:
+            color = GOLD
+        elif i == 1:
+            color = SILVER
+        elif i == 2:
+            color = BRONZE
+        else:
+            color = WHITE
+        
+        # Имя и счет игрока
+        name_text = very_small_font.render(f'{i+1}. {snake.name}', True, color)
+        score_text = very_small_font.render(str(snake.score), True, color)
+        
+        surface.blit(name_text, (WIDTH - leaderboard_width + 10, y_pos))
+        surface.blit(score_text, (WIDTH - 50, y_pos))
+
+def draw_button(surface, text, x, y, width, height, color, hover_color, text_color, font):
+    mouse = pygame.mouse.get_pos()
+    clicked = False
+    
+    if x <= mouse[0] <= x + width and y <= mouse[1] <= y + height:
+        current_color = hover_color
+        if pygame.mouse.get_pressed()[0]:
+            clicked = True
+            pygame.time.delay(200)
+    else:
+        current_color = color
+    
+    pygame.draw.rect(surface, current_color, (x, y, width, height), border_radius=8)
+    pygame.draw.rect(surface, text_color, (x, y, width, height), 2, border_radius=8)
+    
+    text_surf = font.render(text, True, text_color)
+    surface.blit(text_surf, (x + width//2 - text_surf.get_width()//2, y + height//2 - text_surf.get_height()//2))
+    
+    return clicked
+
+def draw_snake_preview(surface, x, y, skin, size=80):
+    """Рисует превью змейки с выбранным скином"""
+    segments = 5
+    segment_size = size // (segments * 2)
+    
+    # Рисуем змейку
+    for i in range(segments):
+        seg_x = x + i * segment_size * 1.5
+        seg_y = y
+        
+        if skin['pattern'] is None:
+            color = skin['color']
+        else:
+            color = skin['pattern'][i % len(skin['pattern'])]
+        
+        # Голова
+        if i == 0:
+            pygame.draw.circle(surface, color, (int(seg_x), int(seg_y)), segment_size)
+            # Глаза
+            pygame.draw.circle(surface, WHITE, (int(seg_x + segment_size//3), int(seg_y - segment_size//3)), segment_size//4)
+            pygame.draw.circle(surface, BLACK, (int(seg_x + segment_size//3), int(seg_y - segment_size//3)), segment_size//8)
+        else:
+            # Тело
+            pygame.draw.circle(surface, color, (int(seg_x), int(seg_y)), segment_size - 2)
+        
+        # Обводка
+        pygame.draw.circle(surface, BLACK, (int(seg_x), int(seg_y)), segment_size if i == 0 else segment_size - 2, 1)
+
+def get_player_name(stats):
+    input_active = True
+    player_name = stats.get('player_name', 'Игрок')
+    input_rect = pygame.Rect(WIDTH//2 - 150, 250, 300, 50)
+    
+    while input_active:
+        screen.fill(DARK_BLUE)
+        
+        title = title_font.render('Serpent.io', True, GOLD)
+        screen.blit(title, (WIDTH//2 - title.get_width()//2, 100))
+        
+        subtitle = large_font.render('Введите ваше имя:', True, WHITE)
+        screen.blit(subtitle, (WIDTH//2 - subtitle.get_width()//2, 180))
+        
+        pygame.draw.rect(screen, WHITE, input_rect, 2, border_radius=5)
+        pygame.draw.rect(screen, (30, 30, 70), input_rect.inflate(-4, -4), border_radius=4)
+        
+        name_text = normal_font.render(player_name, True, WHITE)
+        screen.blit(name_text, (input_rect.x + 10, input_rect.y + 10))
+        
+        if draw_button(screen, 'НАЧАТЬ', WIDTH//2 - 75, 320, 150, 50, GREEN, LIGHT_GREEN, WHITE, normal_font):
+            if player_name.strip():
+                stats['player_name'] = player_name.strip()
+                save_stats(stats)
+                return
+        
+        creator_text = very_small_font.render('Создатель: Цыбина А.А.', True, SILVER)
+        screen.blit(creator_text, (WIDTH//2 - creator_text.get_width()//2, HEIGHT - 30))
+        
+        pygame.display.flip()
+        
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
+            elif event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_RETURN:
+                    if player_name.strip():
+                        stats['player_name'] = player_name.strip()
+                        save_stats(stats)
+                        return
+                elif event.key == pygame.K_BACKSPACE:
+                    player_name = player_name[:-1]
+                elif event.key == pygame.K_ESCAPE:
+                    pygame.quit()
+                    sys.exit()
+                else:
+                    if len(player_name) < 15 and event.unicode.isprintable():
+                        player_name += event.unicode
+
+def skin_selection_screen(stats):
+    """Экран выбора скинов"""
+    running = True
+    current_page = 0
+    skins_per_page = 6
+    
+    while running:
+        screen.fill(DARK_BLUE)
+        
+        # Заголовок
+        title = title_font.render('ВЫБОР СКИНА', True, GOLD)
+        screen.blit(title, (WIDTH//2 - title.get_width()//2, 50))
+        
+        # Информация о монетах
+        coins_text = large_font.render(f'Монеты: {stats["coins"]}', True, GOLD)
+        screen.blit(coins_text, (WIDTH - 250, 50))
+        
+        # Отображение скинов на текущей странице
+        start_idx = current_page * skins_per_page
+        end_idx = min(start_idx + skins_per_page, len(SNAKE_SKINS))
+        
+        for i, skin_idx in enumerate(range(start_idx, end_idx)):
+            skin = SNAKE_SKINS[skin_idx]
+            row = i // 3
+            col = i % 3
+            x = WIDTH//2 - 400 + col * 270
+            y = 150 + row * 200
+            
+            # Фон для скина
+            bg_color = LIGHT_BLUE if skin_idx == stats['selected_skin'] else (50, 50, 100)
+            pygame.draw.rect(screen, bg_color, (x-10, y-10, 250, 180), border_radius=10)
+            pygame.draw.rect(screen, WHITE, (x-10, y-10, 250, 180), 2, border_radius=10)
+            
+            # Представление скина в виде змейки
+            draw_snake_preview(screen, x + 115, y + 50, skin)
+            
+            # Название скина
+            name_text = normal_font.render(skin['name'], True, WHITE)
+            screen.blit(name_text, (x + 125 - name_text.get_width()//2, y + 90))
+            
+            # Цена или статус
+            if skin_idx in stats['unlocked_skins']:
+                status_text = small_font.render('РАЗБЛОКИРОВАН', True, GREEN)
+                screen.blit(status_text, (x + 125 - status_text.get_width()//2, y + 120))
+            else:
+                price_text = small_font.render(f'Цена: {skin["price"]}', True, YELLOW)
+                screen.blit(price_text, (x + 125 - price_text.get_width()//2, y + 120))
+            
+            # Описание
+            desc_text = very_small_font.render(skin['description'], True, SILVER)
+            screen.blit(desc_text, (x + 125 - desc_text.get_width()//2, y + 140))
+            
+            # Кнопка выбора/покупки
+            button_text = "ВЫБРАТЬ" if skin_idx in stats['unlocked_skins'] else "КУПИТЬ"
+            button_color = GREEN if skin_idx in stats['unlocked_skins'] else YELLOW
+            hover_color = LIGHT_GREEN if skin_idx in stats['unlocked_skins'] else GOLD
+            
+            button_clicked = draw_button(screen, button_text, x + 75, y + 160, 80, 30, 
+                                       button_color, hover_color, WHITE, very_small_font)
+            
+            if button_clicked:
+                if skin_idx in stats['unlocked_skins']:
+                    stats['selected_skin'] = skin_idx
+                    save_stats(stats)
+                else:
+                    if unlock_skin(stats, skin_idx):
+                        unlock_sound.play()
+        
+        # Кнопки навигации
+        if current_page > 0:
+            if draw_button(screen, '←', 50, HEIGHT//2, 60, 60, BLUE, LIGHT_BLUE, WHITE, large_font):
+                current_page -= 1
+                pygame.time.delay(200)
+        
+        if (current_page + 1) * skins_per_page < len(SNAKE_SKINS):
+            if draw_button(screen, '→', WIDTH - 110, HEIGHT//2, 60, 60, BLUE, LIGHT_BLUE, WHITE, large_font):
+                current_page += 1
+                pygame.time.delay(200)
+        
+        # Кнопка назад
+        back_button_clicked = draw_button(screen, 'НАЗАД', WIDTH//2 - 80, HEIGHT - 100, 160, 50, RED, PINK, WHITE, normal_font)
+        
+        if back_button_clicked:
+            return
+        
+        pygame.display.flip()
+        
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                return
+            elif event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_ESCAPE:
+                    return
+
+def profile_screen(stats):
+    running = True
+    
+    while running:
+        screen.fill(DARK_BLUE)
+        
+        # Заголовок
+        title = title_font.render('ПРОФИЛЬ ИГРОКА', True, GOLD)
+        screen.blit(title, (WIDTH//2 - title.get_width()//2, 50))
+        
+        # Создатель внизу
+        creator_text = very_small_font.render('Создатель: Цыбина А.А.', True, SILVER)
+        screen.blit(creator_text, (WIDTH//2 - creator_text.get_width()//2, HEIGHT - 30))
+        
+        # Статистика
+        stats_bg = pygame.Surface((700, 500), pygame.SRCALPHA)
+        stats_bg.fill((0, 0, 0, 180))
+        screen.blit(stats_bg, (WIDTH//2 - 350, 120))
+        
+        texts = [
+            f'Имя: {stats["player_name"]}',
+            f'Рейтинг: {stats["rating"]}',
+            f'Всего игр: {stats["total_games"]}',
+            f'Побед: {stats["games_won"]}',
+            f'Общий счет: {stats["total_score"]}',
+            f'Рекорд счета: {stats["max_score"]}',
+            f'Всего убийств: {stats["total_kills"]}',
+            f'Рекорд убийств: {stats["max_kills"]}',
+            f'Монеты: {stats["coins"]}',
+            f'Скинов: {len(stats["unlocked_skins"])}/{len(SNAKE_SKINS)}'
+        ]
+        
+        for i, text in enumerate(texts):
+            color = GOLD if i == 0 else CYAN if 'Рейтинг' in text else YELLOW if 'Рекорд' in text else WHITE
+            text_surf = normal_font.render(text, True, color)
+            screen.blit(text_surf, (WIDTH//2 - 300, 150 + i * 40))
+        
+        # Кнопка назад
+        back_button_clicked = draw_button(screen, 'НАЗАД', WIDTH//2 - 100, 650, 200, 50, RED, PINK, WHITE, normal_font)
+        
+        if back_button_clicked:
+            return
+        
+        pygame.display.flip()
+        
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                return
+            elif event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_ESCAPE:
+                    return
+
+def main_menu(stats):
+    running = True
+    game_mode = 0
+    
+    while running:
+        screen.fill(DARK_BLUE)
+        
+        title = title_font.render('Serpent.io', True, GOLD)
+        screen.blit(title, (WIDTH//2 - title.get_width()//2, 50))
+        
+        creator_text = very_small_font.render('Создатель: Цыбина А.А.', True, SILVER)
+        screen.blit(creator_text, (WIDTH//2 - creator_text.get_width()//2, HEIGHT - 30))
+        
+        stats_bg = pygame.Surface((500, 200), pygame.SRCALPHA)
+        stats_bg.fill((0, 0, 0, 150))
+        screen.blit(stats_bg, (WIDTH//2 - 250, 120))
+        
+        welcome_text = large_font.render(f'Привет, {stats["player_name"]}!', True, WHITE)
+        rating_text = normal_font.render(f'Рейтинг: {stats["rating"]}', True, CYAN)
+        coins_text = normal_font.render(f'Монеты: {stats["coins"]}', True, GOLD)
+        best_score = normal_font.render(f'Рекорд: {stats["max_score"]}', True, YELLOW)
+        
+        screen.blit(welcome_text, (WIDTH//2 - welcome_text.get_width()//2, 140))
+        screen.blit(rating_text, (WIDTH//2 - 230, 180))
+        screen.blit(coins_text, (WIDTH//2 - 230, 220))
+        screen.blit(best_score, (WIDTH//2 + 50, 180))
+        
+        button_width, button_height = 250, 50
+        button_y = 350
+        
+        play_clicked = draw_button(screen, 'ИГРАТЬ', WIDTH//2 - button_width - 20, button_y, button_width, button_height, 
+                      GREEN, LIGHT_GREEN, WHITE, normal_font)
+        
+        skins_clicked = draw_button(screen, 'СКИНЫ', WIDTH//2 + 20, button_y, button_width, button_height, 
+                      BLUE, LIGHT_BLUE, WHITE, normal_font)
+        
+        profile_clicked = draw_button(screen, 'ПРОФИЛЬ', WIDTH//2 - button_width - 20, button_y + 70, button_width, button_height, 
+                      PURPLE, MAGENTA, WHITE, normal_font)
+        
+        quit_clicked = draw_button(screen, 'ВЫХОД', WIDTH//2 + 20, button_y + 70, button_width, button_height, 
+                      RED, PINK, WHITE, normal_font)
+        
+        if play_clicked:
+            return 'play', stats['selected_skin'], game_mode
+        
+        if skins_clicked:
+            skin_selection_screen(stats)
+            continue
+        
+        if profile_clicked:
+            profile_screen(stats)
+            continue
+        
+        if quit_clicked:
+            return 'quit', stats['selected_skin'], game_mode
+        
+        mode_text = small_font.render('Режим:', True, WHITE)
+        screen.blit(mode_text, (WIDTH//2 - 150, button_y - 40))
+        
+        mode_name = GAME_MODES[game_mode]['name']
+        mode_display = normal_font.render(mode_name, True, YELLOW)
+        screen.blit(mode_display, (WIDTH//2 - mode_display.get_width()//2, button_y - 40))
+        
+        prev_clicked = draw_button(screen, '<', WIDTH//2 - 180, button_y - 40, 30, 30, PURPLE, CYAN, WHITE, small_font)
+        next_clicked = draw_button(screen, '>', WIDTH//2 + 150, button_y - 40, 30, 30, PURPLE, CYAN, WHITE, small_font)
+        
+        if prev_clicked:
+            game_mode = (game_mode - 1) % len(GAME_MODES)
+            pygame.time.delay(200)
+        if next_clicked:
+            game_mode = (game_mode + 1) % len(GAME_MODES)
+            pygame.time.delay(200)
+        
+        pygame.display.flip()
+        
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                return 'quit', stats['selected_skin'], game_mode
+            elif event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_ESCAPE:
+                    return 'quit', stats['selected_skin'], game_mode
+    
+    return 'play', stats['selected_skin'], game_mode
+
+def play_game(stats, selected_skin, game_mode):
+    mode = GAME_MODES[game_mode]
+    
+    camera = Camera()
+    player = Snake(MAP_WIDTH//2, MAP_HEIGHT//2, selected_skin, stats['player_name'], False, 4, mode['speed'] / 10.0)
+    
+    # Уменьшаем количество еды в 2 раза
+    foods = [Food() for _ in range(mode['food_amount'] // 2)]
+    
+    bots = []
+    available_names = BOT_NAMES.copy()
+    random.shuffle(available_names)
+    
+    # Изначально создаем 20 ботов
+    initial_bots = min(20, len(available_names))
+    for i in range(initial_bots):
+        bot_name = available_names[i]
+        bot = AdvancedBot(
+            bot_name, 
+            mode['bot_intelligence'], 
+            mode['bot_speed'], 
+            mode['bot_size_variation']
+        )
+        bots.append(bot)
+    
+    # Удаляем использованные имена
+    available_names = available_names[initial_bots:]
+    
+    game_over = False
+    score_multiplier = mode['score_multiplier']
+    coins_earned = 0
+    kills = 0
+    start_time = time.time()
+    bot_respawn_timer = 0
+    bot_respawn_interval = 30  # Генерация каждые 0.5 секунды
+    food_respawn_timer = 0
+    food_respawn_interval = 180  # Генерация еды каждые 3 секунды
+    
+    running = True
+    while running:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                running = False
+                return False
+                
+            if event.type == pygame.KEYDOWN:
+                if game_over:
+                    if event.key == pygame.K_r:
+                        return True
+                    elif event.key == pygame.K_m:
+                        return False
+                    elif event.key == pygame.K_q:
+                        return False
+                else:
+                    if event.key == pygame.K_UP:
+                        player.change_direction((0, -1))
+                    elif event.key == pygame.K_DOWN:
+                        player.change_direction((0, 1))
+                    elif event.key == pygame.K_LEFT:
+                        player.change_direction((-1, 0))
+                    elif event.key == pygame.K_RIGHT:
+                        player.change_direction((1, 0))
+                    elif event.key == pygame.K_ESCAPE:
+                        stats['total_score'] += player.score
+                        stats['total_games'] += 1
+                        stats['total_kills'] += kills
+                        stats['coins'] += coins_earned
+                        stats['time_played'] += int(time.time() - start_time)
+                        save_stats(stats)
+                        return False
+        
+        if not game_over:
+            head_x, head_y = player.get_head_position()
+            camera.update(head_x, head_y, player.speed)
+            
+            player.move()
+            
+            all_snakes = [player] + [bot.snake for bot in bots]
+            
+            # Генерация ботов каждые 0.5 секунды
+            bot_respawn_timer += 1
+            if bot_respawn_timer >= bot_respawn_interval:
+                bot_respawn_timer = 0
+                
+                # Подсчитываем живых ботов
+                alive_bots = sum(1 for bot in bots if bot.snake.is_alive)
+                
+                # Удаляем мертвых ботов, которые умерли более 10 секунд назад
+                current_time = time.time()
+                bots = [bot for bot in bots if bot.snake.is_alive or current_time - bot.death_time < 10]
+                
+                # Если живых ботов меньше 20 и общее количество меньше 40, генерируем новых
+                if alive_bots < 20 and len(bots) < 40:
+                    # Если имена закончились, перемешиваем заново
+                    if not available_names:
+                        available_names = BOT_NAMES.copy()
+                        random.shuffle(available_names)
+                        # Удаляем имена уже существующих ботов
+                        existing_names = {bot.snake.name for bot in bots if bot.snake.is_alive}
+                        available_names = [name for name in available_names if name not in existing_names]
+                    
+                    if available_names:
+                        bot_name = available_names.pop(0)
+                        # Генерируем бота в безопасном месте (подальше от границ)
+                        safe_margin = 800  # Отступ от границ карты
+                        x = random.randint(safe_margin, MAP_WIDTH - safe_margin)
+                        y = random.randint(safe_margin, MAP_HEIGHT - safe_margin)
+                        
+                        bot = AdvancedBot(
+                            bot_name, 
+                            mode['bot_intelligence'], 
+                            mode['bot_speed'], 
+                            mode['bot_size_variation']
+                        )
+                        # Перемещаем бота в безопасную позицию
+                        bot.snake.positions = [(x, y)]
+                        for i in range(1, bot.snake.length):
+                            new_x = x - i * bot.snake.direction[0] * GRID_SIZE
+                            new_y = y - i * bot.snake.direction[1] * GRID_SIZE
+                            bot.snake.positions.append((new_x, new_y))
+                        
+                        bots.append(bot)
+            
+            # Генерация еды, если ее стало слишком мало
+            food_respawn_timer += 1
+            if food_respawn_timer >= food_respawn_interval and len(foods) < mode['food_amount'] // 3:
+                food_respawn_timer = 0
+                # Добавляем еду только в центральной области карты
+                center_margin = 1000
+                for _ in range(5):  # Добавляем по 5 еды за раз
+                    x = random.randint(center_margin, MAP_WIDTH - center_margin)
+                    y = random.randint(center_margin, MAP_HEIGHT - center_margin)
+                    foods.append(Food(position=(x, y)))
+            
+            # Обновление ботов
+            for bot in bots:
+                bot.update(foods, player, bots)
+                
+                # Дополнительная проверка: если бот близко к границе, меняем направление
+                if bot.snake.is_alive:
+                    head_x, head_y = bot.snake.get_head_position()
+                    border_margin = 300
+                    
+                    if (head_x < border_margin and bot.snake.direction[0] == -1) or \
+                       (head_x > MAP_WIDTH - border_margin and bot.snake.direction[0] == 1) or \
+                       (head_y < border_margin and bot.snake.direction[1] == -1) or \
+                       (head_y > MAP_HEIGHT - border_margin and bot.snake.direction[1] == 1):
+                        # Заставляем бота повернуть от границы
+                        new_directions = [(-1, 0), (1, 0), (0, -1), (0, 1)]
+                        current_dir = bot.snake.direction
+                        opposite_dir = (-current_dir[0], -current_dir[1])
+                        # Исключаем текущее и противоположное направление
+                        valid_dirs = [d for d in new_directions if d != current_dir and d != opposite_dir]
+                        if valid_dirs:
+                            bot.snake.change_direction(random.choice(valid_dirs))
+            
+            # Обновление еды
+            for food in foods:
+                food.update()
+            
+            # Проверка столкновений игрока с едой
+            for food in foods[:]:
+                fx, fy = food.position
+                hx, hy = player.get_head_position()
+                distance = math.hypot(fx - hx, fy - hy)
+                
+                if distance < GRID_SIZE * 1.5:
+                    if food.type == 'coin':
+                        coins_earned += food.value['coin']
+                        coin_sound.play()
+                    else:
+                        player.grow(food.value[food.type] * score_multiplier)
+                        if food.type == 'boost':
+                            player.apply_boost()
+                    
+                    foods.remove(food)
+                    # Новая еда появляется в центральной области
+                    center_margin = 1000
+                    x = random.randint(center_margin, MAP_WIDTH - center_margin)
+                    y = random.randint(center_margin, MAP_HEIGHT - center_margin)
+                    foods.append(Food(position=(x, y)))
+                    break
+            
+            # Обновление рангов
+            alive_snakes = [s for s in all_snakes if s.is_alive]
+            alive_snakes.sort(key=lambda x: x.score, reverse=True)
+            
+            for i, snake in enumerate(alive_snakes):
+                snake.rank = i + 1
+            
+            # ПРОВЕРКА СТОЛКНОВЕНИЙ МЕЖДУ ВСЕМИ ЗМЕЙКАМИ
+            for i, snake1 in enumerate(all_snakes):
+                if not snake1.is_alive or snake1.is_invincible():
+                    continue
+                    
+                # Проверка столкновения головы с телами других змей
+                hx1, hy1 = snake1.get_head_position()
+                
+                for snake2 in all_snakes:
+                    if snake1 == snake2 or not snake2.is_alive:
+                        continue
+                    
+                    # Проверка всех сегментов тела snake2
+                    for j, (bx, by) in enumerate(snake2.positions):
+                        # Пропускаем голову (она проверяется отдельно)
+                        if j == 0:
+                            continue
+                            
+                        distance = math.hypot(hx1 - bx, hy1 - by)
+                        if distance < GRID_SIZE * 0.8:
+                            # Любая змейка умирает при касании тела другой змейки
+                            food_dropped = snake1.kill()
+                            if food_dropped:
+                                # Создаем специальную еду на месте смерти
+                                for _ in range(food_dropped):
+                                    foods.append(Food(position=snake1.get_head_position(), is_special=True))
+                            
+                            # Если игрок убил кого-то или был убит
+                            if snake1 == player:
+                                kills += 1
+                                kill_sound.play()
+                            elif snake2 == player:
+                                kills += 1
+                                kill_sound.play()
+                            break
+                
+                # Проверка столкновения головы с головой
+                for snake2 in all_snakes:
+                    if snake1 == snake2 or not snake2.is_alive or snake2.is_invincible():
+                        continue
+                    
+                    hx2, hy2 = snake2.get_head_position()
+                    distance = math.hypot(hx1 - hx2, hy1 - hy2)
+                    
+                    if distance < GRID_SIZE * 0.8:
+                        if snake1.score > snake2.score * 1.2:
+                            food_dropped = snake2.kill()
+                            if food_dropped:
+                                for _ in range(food_dropped):
+                                    foods.append(Food(position=snake2.get_head_position(), is_special=True))
+                            
+                            if snake1 == player:
+                                kills += 1
+                                kill_sound.play()
+                        elif snake2.score > snake1.score * 1.2:
+                            food_dropped = snake1.kill()
+                            if food_dropped:
+                                for _ in range(food_dropped):
+                                    foods.append(Food(position=snake1.get_head_position(), is_special=True))
+                            
+                            if snake2 == player:
+                                kills += 1
+                                kill_sound.play()
+            
+            # Проверка смерти игрока
+            if not player.is_alive:
+                game_over = True
+                final_rank = player.rank
+                stats['time_played'] += int(time.time() - start_time)
+            
+            # Отрисовка
+            draw_dynamic_background(screen, camera)
+            
+            # Отрисовка еды
+            for food in foods:
+                food.draw(screen, camera)
+            
+            # Отрисовка ботов
+            for bot in bots:
+                bot.snake.draw(screen, camera)
+            
+            # Отрисовка игрока
+            player.draw(screen, camera)
+            
+            # HUD с таблицей лидеров
+            alive_count = sum(1 for bot in bots if bot.snake.is_alive) + (1 if player.is_alive else 0)
+            show_hud(screen, player.score, player.speed, player.boost_timer, 
+                    player.name, kills, coins_earned, stats['coins'] + coins_earned, 
+                    player.rank, alive_count, all_snakes, len(bots))
+            
+        else:
+            # Экран завершения игры
+            show_game_over(screen, player.score, player.name, kills, coins_earned, final_rank, stats)
+        
+        pygame.display.flip()
+        clock.tick(60)
+    
+    # Сохранение статистики
+    if not game_over:
+        stats['total_score'] += player.score
+        stats['total_games'] += 1
+        stats['total_kills'] += kills
+        stats['coins'] += coins_earned
+        stats['time_played'] += int(time.time() - start_time)
+        save_stats(stats)
+    
+    return False
+def main():
+    stats = load_stats()
+    
+    get_player_name(stats)
+    stats = load_stats()
+    
+    game_running = True
+    while game_running:
+        action, selected_skin, game_mode = main_menu(stats)
+        
+        if action == 'quit':
+            game_running = False
+        elif action == 'profile':
+            profile_screen(stats)
+        elif action == 'play':
+            restart = play_game(stats, selected_skin, game_mode)
+            if not restart:
+                continue
+    
+    pygame.quit()
+    sys.exit()
+
+if __name__ == "__main__":
+    main()
+    print("Программа запущена!")
