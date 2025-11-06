@@ -56,5 +56,5 @@ Serpent.io – это простая, но невероятно увлекате
 1. Перейдите по ссылке: https://www.dropbox.com/scl/fo/pqc7trdx9cav5oisy22zk/AHspPSVRnDi4vi2qc-zzHAo?rlkey=zoiy7hw5wufcewfddycxj2q86&dl=0;
 2. Авторизуйтесь;
 3. Скачайте папку;
-4. В папке открой единственный файл .exe;
+4. В папке откройте единственный файл .exe;
 5. Готово
