@@ -1,3 +1,9 @@
+Как играть:
+1. Перейдите по ссылке: [https://www.dropbox.com/scl/fo/pqc7trdx9cav5oisy22zk/AHspPSVRnDi4vi2qc-zzHAo?rlkey=zoiy7hw5wufcewfddycxj2q86&dl=0](https://www.dropbox.com/scl/fi/51ctmpienlmi9l1ihziwr/Serpent.io.exe?rlkey=x9k6tkm5n1l354q0sqoffeufm&st=fz1gnlc5&dl=0);
+2. Скачайте папку;
+3. В папке откройте единственный файл .exe;
+4. Готово
+   
 Описание:
 
 Serpent.io – это простая, но невероятно увлекательная аркадная игра, которая на протяжении десятилетий покоряет сердца геймеров всех возрастов. Ее суть сводится к управлению длинным, постоянно растущей змейкой, которая должна поглощать появляющиеся на игровом поле еду. 
@@ -53,8 +59,4 @@ Serpent.io – это простая, но невероятно увлекате
   
 Здесь также будет информация по обновлениям, приятной игры! 
 
-Как играть:
-1. Перейдите по ссылке: [https://www.dropbox.com/scl/fo/pqc7trdx9cav5oisy22zk/AHspPSVRnDi4vi2qc-zzHAo?rlkey=zoiy7hw5wufcewfddycxj2q86&dl=0](https://www.dropbox.com/scl/fi/51ctmpienlmi9l1ihziwr/Serpent.io.exe?rlkey=x9k6tkm5n1l354q0sqoffeufm&st=fz1gnlc5&dl=0);
-2. Скачайте папку;
-3. В папке откройте единственный файл .exe;
-4. Готово
+
