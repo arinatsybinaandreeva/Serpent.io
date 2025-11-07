@@ -52,7 +52,7 @@ Serpent.io – это простая, но невероятно увлекате
 - Добавлен рейтинг игроков. Можно увидеть на каком месте находится змейка.
   
 Как играть:
-1. Перейдите по ссылке: https://www.dropbox.com/scl/fo/pqc7trdx9cav5oisy22zk/AHspPSVRnDi4vi2qc-zzHAo?rlkey=zoiy7hw5wufcewfddycxj2q86&dl=0;
+1. Перейдите по ссылке: [https://www.dropbox.com/scl/fo/pqc7trdx9cav5oisy22zk/AHspPSVRnDi4vi2qc-zzHAo?rlkey=zoiy7hw5wufcewfddycxj2q86&dl=0](https://www.dropbox.com/scl/fi/51ctmpienlmi9l1ihziwr/Serpent.io.exe?rlkey=x9k6tkm5n1l354q0sqoffeufm&st=fz1gnlc5&dl=0);
 2. Скачайте папку;
 3. В папке откройте единственный файл .exe;
 4. Готово
